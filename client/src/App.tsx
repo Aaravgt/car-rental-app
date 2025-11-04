@@ -83,5 +83,5 @@ export default function App() {
         <DailyRentalsReport />
       )}
     </div>
-  )
+  );
 }
