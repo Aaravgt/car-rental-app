@@ -25,6 +25,8 @@ interface BaseReservation {
   status: 'confirmed' | 'cancelled' | 'pending';
   totalPrice: number;
   userId: number;
+  gps?: boolean;
+  tollPass?: boolean;
 }
 
 interface Reservation extends BaseReservation {
@@ -56,6 +58,8 @@ export default function ReservationForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalPrice, setTotalPrice] = useState(reservation?.totalPrice || 0);
+  const [gps, setGps] = useState<boolean>(reservation?.gps || false);
+  const [tollPass, setTollPass] = useState<boolean>(reservation?.tollPass || false);
 
   // Fetch car details if not editing existing reservation
   useEffect(() => {
@@ -75,15 +79,19 @@ export default function ReservationForm({
     }
   };
 
-  // Calculate total price when dates change
+  // Calculate total price when dates or add-ons change
   useEffect(() => {
     if (car && startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      setTotalPrice(days * car.price_per_day);
+      let days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      if (days <= 0) days = 1;
+      const gpsPerDay = gps ? 5 : 0; // $5/day for GPS
+      const tollPerDay = tollPass ? 3 : 0; // $3/day for toll pass
+      const addonsPerDay = gpsPerDay + tollPerDay;
+      setTotalPrice(days * (car.price_per_day + addonsPerDay));
     }
-  }, [car, startDate, endDate]);
+  }, [car, startDate, endDate, gps, tollPass]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +120,10 @@ export default function ReservationForm({
         endDate,
         totalPrice,
         userId: 1, // TODO: Replace with actual user ID from auth system
+        gps,
+        tollPass: tollPass
       });
+      setError(null); // Clear any errors on success
       onClose();
     } catch (err) {
       console.error('Submission error:', err);
@@ -286,6 +297,17 @@ export default function ReservationForm({
             Total Price: ${totalPrice.toFixed(2)}
           </div>
         )}
+
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="checkbox" checked={gps} onChange={e => setGps(e.target.checked)} />
+            <span>GPS ($5/day)</span>
+          </label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="checkbox" checked={tollPass} onChange={e => setTollPass(e.target.checked)} />
+            <span>Toll Pass ($3/day)</span>
+          </label>
+        </div>
 
         <div className="button-group">
           <button

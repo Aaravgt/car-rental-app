@@ -8,6 +8,8 @@ interface BaseReservation {
   status: 'confirmed' | 'cancelled' | 'pending';
   totalPrice: number;
   userId: number;
+  gps?: boolean;
+  tollPass?: boolean;
 }
 
 interface Reservation extends BaseReservation {
@@ -81,30 +83,38 @@ export default function ReservationList() {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to update reservation');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update reservation');
       }
 
       await fetchReservations();
       setEditingReservation(null);
+      setError(null); // Clear any previous errors on success
     } catch (err) {
-      throw new Error('Failed to update reservation');
+      setError(err instanceof Error ? err.message : 'Failed to update reservation');
+      throw err;
     }
   };
 
   const handleCancelReservation = async (id: number) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/reservations/${id}`,
-        { method: 'DELETE' }
+        `${import.meta.env.VITE_API_URL}/api/reservations/${id}/cancel`,
+        { 
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' }
+        }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to cancel reservation');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel reservation');
       }
 
       await fetchReservations();
     } catch (err) {
-      throw new Error('Failed to cancel reservation');
+      setError(err instanceof Error ? err.message : 'Failed to cancel reservation');
+      throw err;
     }
   };
 
@@ -261,6 +271,9 @@ export default function ReservationList() {
                 <div className="reservation-dates">
                   <div>From: {new Date(reservation.startDate).toLocaleDateString()}</div>
                   <div>To: {new Date(reservation.endDate).toLocaleDateString()}</div>
+                </div>
+                <div style={{ marginTop: 8, color: '#4b5563', fontSize: '0.875rem' }}>
+                  Add-ons: {reservation.gps ? 'GPS' : ''}{reservation.gps && reservation.tollPass ? ', ' : ''}{reservation.tollPass ? 'Toll Pass' : (reservation.gps ? '' : 'None')}
                 </div>
 
                 <div className="reservation-price">
