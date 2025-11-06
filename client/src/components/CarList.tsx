@@ -9,6 +9,8 @@ interface BaseReservation {
   status: 'confirmed' | 'cancelled' | 'pending';
   totalPrice: number;
   userId: number;
+  gps?: boolean;
+  tollPass?: boolean;
 }
 
 interface Car {
@@ -17,6 +19,7 @@ interface Car {
   type: string;
   price_per_day: number;
   available: boolean;
+  imageUrl?: string | null;
 }
 
 interface CarListProps {
@@ -68,27 +71,42 @@ export default function CarList({
 
   const handleCreateReservation = async (reservationData: Omit<BaseReservation, 'status'>) => {
     try {
-      console.log('Creating reservation:', reservationData);
+      console.log('Creating reservation:', JSON.stringify(reservationData, null, 2));
+      
+      // Validate required fields
+      if (!reservationData.carId) throw new Error('Car ID is required');
+      if (!reservationData.startDate) throw new Error('Start date is required');
+      if (!reservationData.endDate) throw new Error('End date is required');
+      if (!reservationData.totalPrice) throw new Error('Total price is required');
+
       const response = await fetch(`${baseUrl}/api/reservations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...reservationData,
+          carId: parseInt(reservationData.carId.toString(), 10),
           status: 'confirmed' // Set initial status
         })
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create reservation');
+        console.error('Server error:', responseData);
+        throw new Error(responseData.error || 'Failed to create reservation');
       }
 
+      console.log('Reservation created successfully:', responseData);
+      
       // Refresh the car list to update availability
       await fetchCars();
       setSelectedCar(null);
+      
+      // Return the created reservation
+      return responseData;
     } catch (err) {
       console.error('Reservation error:', err);
-      throw err;
+      throw err instanceof Error ? err : new Error('Failed to create reservation');
     }
   };
 
@@ -132,6 +150,7 @@ export default function CarList({
     <div className="car-list">
       <h2 className="text-2xl font-bold mb-6">Available Cars</h2>
       <CarFilter onFilterChange={handleFilterChange} />
+      <style>{`.car-card img{ width:100%; height:180px; object-fit:cover; border-radius:6px; margin-bottom:8px; }`}</style>
       <style>{`
         .car-list {
           max-width: 1200px;
@@ -280,6 +299,7 @@ export default function CarList({
       <div className="cars-grid">
         {filteredCars.map(car => (
             <div key={car.id} className="car-card">
+              {car.imageUrl ? <img src={car.imageUrl} alt={car.model} /> : null}
               <h3 className="car-model">{car.model}</h3>
               <p className="car-type">{car.type}</p>
               <p className="car-price">${car.price_per_day.toFixed(2)} / day</p>
