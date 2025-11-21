@@ -12,10 +12,22 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Validate input
+    if (!username || !password) {
+      setError('Please enter both username and password');
+      setLoading(false);
+      return;
+    }
+
     try {
       await login(username, password);
+      // Clear form on success
+      setUsername('');
+      setPassword('');
     } catch (err: any) {
-      setError(err?.message || 'Login failed');
+      console.error('Login error:', err);
+      setError(err?.message || 'Login failed. Please check your credentials and try again.');
     } finally {
       setLoading(false);
     }

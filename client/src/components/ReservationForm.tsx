@@ -60,6 +60,13 @@ export default function ReservationForm({
   const [totalPrice, setTotalPrice] = useState(reservation?.totalPrice || 0);
   const [gps, setGps] = useState<boolean>(reservation?.gps || false);
   const [tollPass, setTollPass] = useState<boolean>(reservation?.tollPass || false);
+  // Payment related state (demo only; not secure storage)
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [expiry, setExpiry] = useState(''); // MM/YY
+  const [cvc, setCvc] = useState('');
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
   // Fetch car details if not editing existing reservation
   useEffect(() => {
@@ -114,17 +121,78 @@ export default function ReservationForm({
     setError(null);
 
     try {
-      await onSubmit({
+      // Basic client-side payment validation
+      if (!cardNumber || !cardName || !expiry || !cvc) {
+        setPaymentError('Please fill in all payment fields');
+        setLoading(false);
+        return;
+      }
+      if (!/^\d{12,19}$/.test(cardNumber.replace(/\s+/g, ''))) {
+        setPaymentError('Invalid card number format');
+        setLoading(false);
+        return;
+      }
+      if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+        setPaymentError('Expiry must be MM/YY');
+        setLoading(false);
+        return;
+      }
+      if (!/^\d{3,4}$/.test(cvc)) {
+        setPaymentError('CVC must be 3 or 4 digits');
+        setLoading(false);
+        return;
+      }
+
+      const reservationPayload = {
         carId: carId || reservation!.carId,
         startDate,
         endDate,
         totalPrice,
-        userId: 1, // TODO: Replace with actual user ID from auth system
+        userId: 1, // placeholder user
         gps,
         tollPass: tollPass
-      });
-      setError(null); // Clear any errors on success
-      onClose();
+      };
+      await onSubmit(reservationPayload);
+      setError(null);
+
+      // After reservation creation, call payment endpoint (we assume reservation saved and car availability updated)
+      // We need reservation ID but the parent onSubmit does not currently return it.
+      // For demo: fetch the latest reservation for user 1 matching car and dates.
+      try {
+        const q = new URLSearchParams({ userId: '1' }).toString();
+        const resList = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reservations?${q}`);
+        const reservations = await resList.json();
+        // naive match
+        const created = reservations.find((r: any) => r.carId === reservationPayload.carId && r.startDate === reservationPayload.startDate && r.endDate === reservationPayload.endDate && r.totalPrice === reservationPayload.totalPrice);
+        if (!created) {
+          setPaymentError('Could not locate created reservation for payment.');
+        } else {
+          const payRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/payments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reservationId: created.id,
+              cardNumber: cardNumber.replace(/\s+/g, ''),
+              cardName,
+              expiry,
+              cvc,
+              method: 'card'
+            })
+          });
+          if (!payRes.ok) {
+            const body = await payRes.json().catch(() => ({}));
+            setPaymentError(body.error || 'Payment failed');
+          } else {
+            const paymentData = await payRes.json();
+            setPaymentSuccess(`Payment successful • Charged $${paymentData.amount}`);
+            setPaymentError(null);
+            // close form shortly
+            setTimeout(() => onClose(), 1500);
+          }
+        }
+      } catch (payErr) {
+        setPaymentError('Payment request failed');
+      }
     } catch (err) {
       console.error('Submission error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save reservation');
@@ -297,6 +365,51 @@ export default function ReservationForm({
             Total Price: ${totalPrice.toFixed(2)}
           </div>
         )}
+
+          {/* Payment Section */}
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <label className="form-label">Payment Details</label>
+            <input
+              type="text"
+              placeholder="Card Number"
+              className="form-input"
+              value={cardNumber}
+              onChange={e => setCardNumber(e.target.value.replace(/[^0-9]/g, ''))}
+              maxLength={19}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Name on Card"
+              className="form-input"
+              value={cardName}
+              onChange={e => setCardName(e.target.value)}
+              required
+            />
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <input
+                type="text"
+                placeholder="MM/YY"
+                className="form-input"
+                value={expiry}
+                onChange={e => setExpiry(e.target.value)}
+                maxLength={5}
+                required
+              />
+              <input
+                type="text"
+                placeholder="CVC"
+                className="form-input"
+                value={cvc}
+                onChange={e => setCvc(e.target.value.replace(/[^0-9]/g, ''))}
+                maxLength={4}
+                required
+              />
+            </div>
+            {paymentError && <div className="error-message" style={{ marginTop: 8 }}>{paymentError}</div>}
+            {paymentSuccess && <div style={{ marginTop: 8, color: '#059669', fontSize: '0.875rem' }}>{paymentSuccess}</div>}
+            <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: 4 }}>Demo only: Do not enter real card details.</div>
+          </div>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

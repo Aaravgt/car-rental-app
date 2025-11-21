@@ -5,23 +5,17 @@ A full-stack web application that connects customers with car rental companies.
 Customers can browse available cars, make and manage bookings, and handle payments securely.  
 Rental companies can update vehicle inventory, track reservations, and view reports on fleet status and customer feedback.
 
-## Search Locations (UI-4)
+## Current Features (UI-4)
 
-The app now includes a locations search feature with SQLite database storage and a React search component.
+| Area | Highlights |
+| --- | --- |
+| Search | `GET /api/locations?query=` with SQLite-backed search + debounced React search bar |
+| Inventory | `GET /api/cars` filterable list sourced from the same SQLite database |
+| Auth | `/api/login` + `/api/signup` issue demo tokens that the React `AuthContext` consumes |
+| Reservations | Full CRUD endpoints with conflict detection, status updates, and a Daily Rentals report |
+| Payments | `/api/payments` validates card data (Luhn) and stores captured payments linked to reservations |
 
-### What was added
-- `server/index.js` — Express endpoint `GET /api/locations?query=...` that searches an SQLite database
-- `client/src/components/SearchBar.tsx` — React search component with debounced input
-- Server-side features:
-  - Case-insensitive substring search
-  - SQLite database with auto-seeding
-  - Proper error handling
-  - API test suite
-- Client-side features:
-  - TypeScript support
-  - Loading states
-  - Error handling
-  - Mobile-friendly UI
+The backend lives solely in `server/index.js`. Legacy mock servers, JSON data dumps, and ad-hoc scripts have been removed so there’s a single source of truth.
 
 ### Setup & Run Locally
 
@@ -31,7 +25,7 @@ The app now includes a locations search feature with SQLite database storage and
    - Reopen PowerShell after installing
    - Verify with: `node -v` and `npm -v`
 
-2. Install Dependencies
+2. Install Dependencies (one-time)
    ```powershell
    # Install server deps (Express + SQLite)
    npm install --prefix .\server
@@ -76,24 +70,18 @@ curl "http://localhost:3000/api/locations?query=San"
 ### Technical Notes
 
 Database
-- Uses SQLite (in-memory for dev/test, can switch to file-based)
-- Auto-creates and seeds the locations table
-- Case-insensitive search via SQLite's LIKE and COLLATE NOCASE
+- SQLite database file is generated at runtime inside `server/data/` (git ignored). Running the server or tests will auto-create and seed tables for locations, users, cars, reservations, and payments.
+- Case-insensitive search via SQLite's `LIKE ... COLLATE NOCASE`.
 
-API Endpoints
-- GET `/api/locations` - List all locations
-- GET `/api/locations?query=...` - Search locations
-  - Returns: `[{ id: number, name: string }]`
-  - 200: Success (empty array if no matches)
-  - 500: Server error
+API Endpoints (partial)
+- `GET /api/locations` – Search/filter pickup locations
+- `POST /api/login` – Demo login that returns `{ token, user }`
+- `POST /api/signup` – Creates a new demo user if the username is free
+- `POST /api/reservations` – Creates a reservation after validating date conflicts
+- `POST /api/payments` – Captures a payment for a reservation after Luhn validation
+- `GET /api/reports/daily-rentals` – Aggregated revenue + utilization report
 
-React Component
-```typescript
-import { SearchBar } from './components/SearchBar';
-
-// Usage with custom API URL:
-<SearchBar baseUrl="http://localhost:3000" />
-
-// Default localhost:3000:
-<SearchBar />
-```
+React Components
+- `SearchBar` – debounced search UI for locations
+- `ReservationForm` – drives reservation + payment creation flow
+- `AuthContext` – persists tokens from login/signup endpoints across reloads

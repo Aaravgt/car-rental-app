@@ -29,6 +29,10 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# SQLite databases generated at runtime
+server/data/*.db
+server/data/*.db.backup
+
 # Runtime data
 pids
 *.pid
