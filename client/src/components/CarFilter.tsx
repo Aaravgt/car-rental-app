@@ -16,7 +16,9 @@ const carTypes = [
   'Luxury',
   'Economy',
   'Luxury SUV',
-  'Compact'
+  'Compact',
+  'Sports'
+
 ];
 
 export default function CarFilter({
