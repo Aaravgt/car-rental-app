@@ -19,7 +19,7 @@ interface Car {
   type: string;
   price_per_day: number;
   available: boolean;
-  imageUrl?: string | null;
+  image_url: string | null;
 }
 
 interface CarListProps {
@@ -299,7 +299,13 @@ export default function CarList({
       <div className="cars-grid">
         {filteredCars.map(car => (
             <div key={car.id} className="car-card">
-              {car.imageUrl ? <img src={car.imageUrl} alt={car.model} /> : null}
+               {car.image_url && (
+                <img
+                  src={car.image_url}
+                  alt={car.model}
+                  className="car-image"
+                />
+              )}
               <h3 className="car-model">{car.model}</h3>
               <p className="car-type">{car.type}</p>
               <p className="car-price">${car.price_per_day.toFixed(2)} / day</p>

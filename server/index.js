@@ -91,7 +91,8 @@ const setupDb = async () => {
         model TEXT NOT NULL,
         type TEXT NOT NULL,
         price_per_day DECIMAL(10,2) NOT NULL,
-        available BOOLEAN DEFAULT 1
+        available BOOLEAN DEFAULT 1,
+        image_url TEXT
       );
 
       INSERT OR IGNORE INTO locations (id, name) VALUES
