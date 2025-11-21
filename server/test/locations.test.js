@@ -12,10 +12,16 @@ describe('GET /api/locations', () => {
     const res = await request(app).get('/api/locations');
     expect(res.status).to.equal(200);
     expect(res.body).to.be.an('array');
-    expect(res.body.length).to.equal(8);
+    expect(res.body.length).to.equal(12);
     // Verify sorted by name
     const names = res.body.map(r => r.name);
     expect(names).to.deep.equal([...names].sort());
+    expect(names).to.include.members([
+      'San Francisco, CA',
+      'San Jose, CA',
+      'New York, NY',
+      'Toronto, ON'
+    ]);
   });
 
   it('returns matching locations for a case-insensitive substring', async () => {
