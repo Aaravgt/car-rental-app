@@ -69,46 +69,53 @@ export default function CarList({
     }
   }, [cars, onFilterChange]);
 
-  const handleCreateReservation = async (reservationData: Omit<BaseReservation, 'status'>) => {
-    try {
-      console.log('Creating reservation:', JSON.stringify(reservationData, null, 2));
-      
-      // Validate required fields
-      if (!reservationData.carId) throw new Error('Car ID is required');
-      if (!reservationData.startDate) throw new Error('Start date is required');
-      if (!reservationData.endDate) throw new Error('End date is required');
-      if (!reservationData.totalPrice) throw new Error('Total price is required');
+const handleCreateReservation = async (reservationData: Omit<BaseReservation, 'status'>) => {
+  try {
+    console.log('Creating reservation:', JSON.stringify(reservationData, null, 2));
+    
+    // Validate required fields
+    if (!reservationData.carId) throw new Error('Car ID is required');
+    if (!reservationData.userId) throw new Error('User ID is required');
+    if (!reservationData.startDate) throw new Error('Start date is required');
+    if (!reservationData.endDate) throw new Error('End date is required');
+    // allow 0 but not null/undefined
+    if (reservationData.totalPrice == null) throw new Error('Total price is required');
 
-      const response = await fetch(`${baseUrl}/api/reservations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...reservationData,
-          carId: parseInt(reservationData.carId.toString(), 10),
-          status: 'confirmed' // Set initial status
-        })
-      });
+    const response = await fetch(`${baseUrl}/api/reservations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        carId: Number(reservationData.carId),
+        userId: reservationData.userId,
+        startDate: reservationData.startDate,
+        endDate: reservationData.endDate,
+        totalPrice: reservationData.totalPrice,
+        gps: reservationData.gps ?? false,
+        tollPass: reservationData.tollPass ?? false
+        // no need to send status; backend sets it to 'confirmed'
+      })
+    });
 
-      const responseData = await response.json();
+    const responseData = await response.json();
 
-      if (!response.ok) {
-        console.error('Server error:', responseData);
-        throw new Error(responseData.error || 'Failed to create reservation');
-      }
-
-      console.log('Reservation created successfully:', responseData);
-      
-      // Refresh the car list to update availability
-      await fetchCars();
-      setSelectedCar(null);
-      
-      // Return the created reservation
-      return responseData;
-    } catch (err) {
-      console.error('Reservation error:', err);
-      throw err instanceof Error ? err : new Error('Failed to create reservation');
+    if (!response.ok) {
+      console.error('Server error:', responseData);
+      throw new Error(responseData.error || 'Failed to create reservation');
     }
-  };
+
+    console.log('Reservation created successfully:', responseData);
+    
+    // Refresh the car list to update availability
+    await fetchCars();
+    setSelectedCar(null);
+    
+    return responseData;
+  } catch (err) {
+    console.error('Reservation error:', err);
+    throw err instanceof Error ? err : new Error('Failed to create reservation');
+  }
+};
+
 
   
 

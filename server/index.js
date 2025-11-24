@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
     // Allow requests from the Vite dev server
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
     // Handle preflight requests
@@ -209,10 +209,10 @@ app.get('/test', (req, res) => {
 app.post('/api/reservations', async (req, res) => {
   try {
     console.log('Received reservation request:', req.body);
-    const { carId, userId, startDate, endDate, totalPrice } = req.body;
+    const { carId, userId, startDate, endDate, totalPrice, gps = 0, tollPass = 0 } = req.body;
     
     // Validate required fields
-    if (!carId || !userId || !startDate || !endDate || !totalPrice) {
+    if (!carId || !userId || !startDate || !endDate || totalPrice == null) {
       console.log('Missing fields:', { carId, userId, startDate, endDate, totalPrice });
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -258,9 +258,9 @@ app.post('/api/reservations', async (req, res) => {
     });
 
     const result = await db.run(
-      `INSERT INTO reservations (carId, userId, startDate, endDate, totalPrice, status)
-       VALUES (?, ?, ?, ?, ?, 'confirmed')`,
-      [carId, userId, startDate, endDate, totalPrice]);
+      `INSERT INTO reservations (carId, userId, startDate, endDate, totalPrice, status, gps, tollPass)
+       VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?)`,
+      [carId, userId, startDate, endDate, totalPrice, gps, tollPass]);
 
     res.json({ id: result.lastID });
   } catch (err) {
@@ -272,7 +272,7 @@ app.post('/api/reservations', async (req, res) => {
 app.put('/api/reservations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { startDate, endDate, totalPrice } = req.body;
+    const { startDate, endDate, totalPrice, gps = 0, tollPass = 0 } = req.body;
     
     // Validate required fields
     if (!startDate || !endDate || !totalPrice) {
@@ -305,9 +305,9 @@ app.put('/api/reservations/:id', async (req, res) => {
 
     await db.run(
       `UPDATE reservations 
-       SET startDate = ?, endDate = ?, totalPrice = ?, updatedAt = CURRENT_TIMESTAMP
+       SET startDate = ?, endDate = ?, totalPrice = ?, gps = ?, tollPass = ?,  updatedAt = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [startDate, endDate, totalPrice, id]
+      [startDate, endDate, totalPrice, gps, tollPass, id]
     );
 
     res.json({ success: true });
@@ -357,6 +357,7 @@ app.get('/api/reservations/:id', async (req, res) => {
 });
 
 // Daily Rentals Report endpoint
+
 app.get('/api/reports/daily-rentals', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -368,15 +369,31 @@ app.get('/api/reports/daily-rentals', async (req, res) => {
     const report = await db.all(`
       SELECT 
         DATE(r.startDate) as date,
-        COUNT(*) as total_rentals,
-        SUM(r.totalPrice) as total_revenue,
-        GROUP_CONCAT(DISTINCT c.type) as car_types,
-        AVG(r.totalPrice) as average_price,
-        COUNT(CASE WHEN r.status = 'cancelled' THEN 1 END) as cancellations
+
+        -- Only confirmed rentals count toward rentals & revenue
+        COUNT(CASE WHEN r.status = 'confirmed' THEN 1 END) as total_rentals,
+        SUM(CASE WHEN r.status = 'confirmed' THEN r.totalPrice ELSE 0 END) as total_revenue,
+
+        -- If no confirmed rentals for a day, average_price becomes 0 instead of NULL
+        COALESCE(
+          AVG(CASE WHEN r.status = 'confirmed' THEN r.totalPrice END),
+          0
+        ) as average_price,
+
+        -- Cancellations counted separately
+        COUNT(CASE WHEN r.status = 'cancelled' THEN 1 END) as cancellations,
+
+        -- Simple, safe car-types list (can include duplicates; fine for now)
+        GROUP_CONCAT(
+          DISTINCT TRIM(
+            CASE WHEN r.status = 'confirmed' THEN c.type END
+          )
+        ) AS car_types
+
       FROM reservations r
       JOIN cars c ON r.carId = c.id
       WHERE DATE(r.startDate) BETWEEN DATE(?) AND DATE(?)
-      AND r.status != 'pending'
+        AND r.status != 'pending'
       GROUP BY DATE(r.startDate)
       ORDER BY date ASC
     `, [startDate, endDate]);
@@ -387,6 +404,9 @@ app.get('/api/reports/daily-rentals', async (req, res) => {
     res.status(500).json({ error: 'Failed to generate report' });
   }
 });
+
+
+
 
 app.get('/api/reservations', async (req, res) => {
   try {
@@ -450,6 +470,27 @@ app.get('/api/cars', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Get single car by ID
+app.get('/api/cars/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid car ID' });
+    }
+
+    const car = await db.get('SELECT * FROM cars WHERE id = ?', [id]);
+    if (!car) {
+      return res.status(404).json({ error: 'Car not found' });
+    }
+
+    return res.json(car);
+  } catch (err) {
+    console.error('Error fetching car by ID:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 // Login endpoint
 app.post('/api/login', async (req, res) => {

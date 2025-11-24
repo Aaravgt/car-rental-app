@@ -96,27 +96,27 @@ export default function ReservationList() {
     }
   };
 
-  const handleCancelReservation = async (id: number) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/reservations/${id}/cancel`,
-        { 
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to cancel reservation');
+const handleCancelReservation = async (id: number) => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/reservations/${id}`,
+      { 
+        method: 'DELETE'
       }
+    );
 
-      await fetchReservations();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel reservation');
-      throw err;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to cancel reservation');
     }
-  };
+
+    await fetchReservations();
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to cancel reservation');
+    throw err;
+  }
+};
+
 
   return (
     <div className="reservation-list">
