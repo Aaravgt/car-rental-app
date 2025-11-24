@@ -201,7 +201,7 @@ export default function DailyRentalsReport() {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate}
-              max={new Date().toISOString().split('T')[0]}
+              //max={new Date().toISOString().split('T')[0]}
             />
           </div>
         </div>
@@ -261,7 +261,8 @@ export default function DailyRentalsReport() {
                 <td>${day.total_revenue.toFixed(2)}</td>
                 <td>${day.average_price.toFixed(2)}</td>
                 <td>{day.cancellations}</td>
-                <td>{day.car_types.split(',').join(', ')}</td>
+                <td>{day.car_types ? day.car_types.split(',').join(', ') : 'None'}</td>
+
               </tr>
             ))}
             {report.length === 0 && (

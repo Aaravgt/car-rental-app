@@ -68,12 +68,15 @@ export default function ReservationForm({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
-  // Fetch car details if not editing existing reservation
+  
+  // Fetch car details for both new and edit modes
   useEffect(() => {
-    if (carId) {
-      fetchCarDetails(carId);
+    const id = carId ?? reservation?.carId;
+    if (id) {
+      fetchCarDetails(id);
     }
-  }, [carId]);
+  }, [carId, reservation]);
+
 
   const fetchCarDetails = async (id: number) => {
     try {
