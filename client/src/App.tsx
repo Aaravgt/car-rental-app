@@ -181,7 +181,7 @@ export default function App() {
                 </button>
               </div>
             )}
-            <CarList locationId={selectedLocation?.id} />
+            <CarList locationId={selectedLocation?.id} requestAuth={() => setAuthMode('login')} />
           </>
         )}
         {activeTab === 'reservations' && user && <ReservationList />}
@@ -212,7 +212,7 @@ export default function App() {
             <Login onSuccess={() => {
               setAuthMode(null);
               setActiveTab('search');
-            }} />
+            }} onSwitchToSignup={() => setAuthMode('signup')} />
           </div>
         </div>
       )}
@@ -223,7 +223,7 @@ export default function App() {
             <Signup onSuccess={() => {
               setAuthMode(null);
               setActiveTab('search');
-            }} />
+            }} onSwitchToLogin={() => setAuthMode('login')} />
           </div>
         </div>
       )}

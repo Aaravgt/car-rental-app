@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import ReservationForm from './ReservationForm';
+import { useAuth } from '../AuthContext';
 import CarFilter from './CarFilter';
 
 interface BaseReservation {
@@ -26,6 +27,8 @@ interface CarListProps {
   baseUrl?: string;
   onFilterChange?: (cars: Car[]) => void;
   locationId?: number;
+  // callback to request the app open the auth/sign-in UI
+  requestAuth?: () => void;
 }
 
 // carTypes moved into CarFilter; no local declaration needed here
@@ -33,7 +36,8 @@ interface CarListProps {
 export default function CarList({
   baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000',
   onFilterChange,
-  locationId
+  locationId,
+  requestAuth
 }: CarListProps) {
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
@@ -43,6 +47,7 @@ export default function CarList({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+  const { user } = useAuth();
 
   const handleFilterChange = useCallback((newFilters: { type: string; minPrice: string; maxPrice: string }) => {
     // store the chosen filters in local state so fetchCars picks them up
@@ -329,7 +334,19 @@ const handleCreateReservation = async (reservationData: Omit<BaseReservation, 's
               {car.available && (
                 <button
                   className="reserve-button"
-                  onClick={() => setSelectedCar(car)}
+                  onClick={() => {
+                    if (!user) {
+                      if (requestAuth) {
+                        requestAuth();
+                        return;
+                      }
+                      // fallback: open login modal by navigating to top-level login route if app had one
+                      // For now, no-op if no requestAuth provided
+                      return;
+                    }
+
+                    setSelectedCar(car);
+                  }}
                 >
                   Reserve Now
                 </button>

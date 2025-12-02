@@ -3,9 +3,10 @@ import { useAuth } from '../AuthContext';
 
 interface LoginProps {
   onSuccess?: () => void;
+  onSwitchToSignup?: () => void;
 }
 
-export default function Login({ onSuccess }: LoginProps) {
+export default function Login({ onSuccess, onSwitchToSignup }: LoginProps) {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -175,6 +176,12 @@ export default function Login({ onSuccess }: LoginProps) {
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+        <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+          New user? <button type="button" onClick={() => { if (onSwitchToSignup) onSwitchToSignup(); }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>Sign up now!</button>
+        </div>
+      </div>
 
       <div className="login-credentials">
         <h3>Demo Credentials</h3>

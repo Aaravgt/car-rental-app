@@ -3,9 +3,10 @@ import { useAuth } from '../AuthContext';
 
 interface SignupProps {
   onSuccess?: () => void;
+  onSwitchToLogin?: () => void;
 }
 
-export default function Signup({ onSuccess }: SignupProps) {
+export default function Signup({ onSuccess, onSwitchToLogin }: SignupProps) {
   const { signup } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -51,6 +52,10 @@ export default function Signup({ onSuccess }: SignupProps) {
           </button>
         </div>
       </form>
+
+      <div style={{ marginTop: 12, fontSize: '0.9rem', color: '#6b7280' }}>
+        Have an account? <button type="button" onClick={() => { if (onSwitchToLogin) onSwitchToLogin(); }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>Sign in!</button>
+      </div>
     </div>
   );
 }
