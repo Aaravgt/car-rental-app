@@ -109,18 +109,45 @@ export default function App() {
         </div>
 
         <div style={{ position: 'absolute', right: 24, top: 24 }}>
-            {user ? (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ color: '#374151' }}>Hi, {user.username}</span>
-                  <button onClick={logout} className="tab-button" style={{ padding: '0.4rem 0.6rem' }}>Logout</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setAuthMode('login')} className="tab-button">Sign in</button>
-                  <button onClick={() => setAuthMode('signup')} className="tab-button">Sign up</button>
-                </div>
-              )}
+          {user ? (
+            <div
+              style={{
+                display: 'flex',
+                gap: 16,
+                alignItems: 'center',
+                background: 'rgba(255,255,255,0.85)',
+                padding: '0.5rem 0.9rem',
+                borderRadius: 8,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+              }}
+            >
+              <span style={{ color: '#1f2937', fontWeight: 600, fontSize: '0.95rem' }}>
+                Hi, {user.username}
+              </span>
+              <button
+                onClick={logout}
+                className="tab-button"
+                style={{
+                  padding: '0.4rem 0.7rem',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: 6
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setAuthMode('login')} className="tab-button">
+                Sign in
+              </button>
+              <button onClick={() => setAuthMode('signup')} className="tab-button">
+                Sign up
+              </button>
+            </div>
+          )}
         </div>
+
       </div>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1rem' }}>
@@ -182,7 +209,10 @@ export default function App() {
       {authMode === 'login' && (
         <div style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.4)' }} onClick={() => setAuthMode(null)}>
           <div onClick={e => e.stopPropagation()}>
-            <Login />
+            <Login onSuccess={() => {
+              setAuthMode(null);
+              setActiveTab('search');
+            }} />
           </div>
         </div>
       )}
@@ -190,7 +220,10 @@ export default function App() {
       {authMode === 'signup' && (
         <div style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.4)' }} onClick={() => setAuthMode(null)}>
           <div onClick={e => e.stopPropagation()}>
-            <Signup />
+            <Signup onSuccess={() => {
+              setAuthMode(null);
+              setActiveTab('search');
+            }} />
           </div>
         </div>
       )}

@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../AuthContext';
 
-export default function Signup() {
+interface SignupProps {
+  onSuccess?: () => void;
+}
+
+export default function Signup({ onSuccess }: SignupProps) {
   const { signup } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -14,6 +18,13 @@ export default function Signup() {
     setError(null);
     try {
       await signup(username, password);
+      // Clear form on success
+      setUsername('');
+      setPassword('');
+      // Close modal on successful signup
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err: any) {
       setError(err?.message || 'Signup failed');
     } finally {

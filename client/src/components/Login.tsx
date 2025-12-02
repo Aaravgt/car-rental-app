@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../AuthContext';
 
-export default function Login() {
+interface LoginProps {
+  onSuccess?: () => void;
+}
+
+export default function Login({ onSuccess }: LoginProps) {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +29,10 @@ export default function Login() {
       // Clear form on success
       setUsername('');
       setPassword('');
+      // Close modal on successful login
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err?.message || 'Login failed. Please check your credentials and try again.');
