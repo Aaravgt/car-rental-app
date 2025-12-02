@@ -69,6 +69,8 @@ const setupDb = async () => {
         status TEXT CHECK(status IN ('confirmed', 'cancelled', 'pending')) DEFAULT 'pending',
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        gps BOOLEAN DEFAULT 0,
+        tollPass BOOLEAN DEFAULT 0,
         FOREIGN KEY (carId) REFERENCES cars(id),
         FOREIGN KEY (userId) REFERENCES users(id)
       );
@@ -161,6 +163,92 @@ const setupDb = async () => {
         (30, 'Chevrolet Corvette', 'Sports', 275.00, 1),
         (31, 'Ford Mustang GT', 'Sports', 150.00, 1),
         (32, 'BMW M4', 'Sports', 225.00, 1);
+    `);
+
+    // Migration: Add locationId column if it doesn't exist (for existing databases)
+    try {
+      await db.exec(`ALTER TABLE cars ADD COLUMN locationId INTEGER REFERENCES locations(id)`);
+      console.log('Added locationId column to cars table');
+    } catch (err) {
+      // Column already exists, which is fine
+      if (err.message && !err.message.includes('duplicate column name')) {
+        console.log('Migration note:', err.message);
+      }
+    }
+
+    // Migration: Add gps and tollPass columns to reservations table if they don't exist
+    try {
+      await db.exec(`ALTER TABLE reservations ADD COLUMN gps BOOLEAN DEFAULT 0`);
+      console.log('Added gps column to reservations table');
+    } catch (err) {
+      if (err.message && !err.message.includes('duplicate column name')) {
+        console.log('Migration note (gps):', err.message);
+      }
+    }
+    try {
+      await db.exec(`ALTER TABLE reservations ADD COLUMN tollPass BOOLEAN DEFAULT 0`);
+      console.log('Added tollPass column to reservations table');
+    } catch (err) {
+      if (err.message && !err.message.includes('duplicate column name')) {
+        console.log('Migration note (tollPass):', err.message);
+      }
+    }
+
+    // Add new locations if they don't exist
+    await db.exec(`
+      INSERT OR IGNORE INTO locations (id, name) VALUES
+        (13, 'Montreal, QC'),
+        (14, 'Vancouver, BC'),
+        (15, 'Hamilton, ON'),
+        (16, 'London, ON');
+    `);
+
+    // Restore original image URLs from local files (matching car models to image files)
+    // Using model name to handle any duplicates or ensure correct mapping
+    await db.exec(`
+      UPDATE cars SET image_url = '/images/cars/toyota-corolla.jpeg' WHERE model = 'Toyota Corolla';
+      UPDATE cars SET image_url = '/images/cars/honda-civic.jpeg' WHERE model = 'Honda Civic';
+      UPDATE cars SET image_url = '/images/cars/hyundai-elantra.jpeg' WHERE model = 'Hyundai Elantra';
+      UPDATE cars SET image_url = '/images/cars/nissan-versa.jpg' WHERE model = 'Nissan Versa';
+      UPDATE cars SET image_url = '/images/cars/toyota-camry.jpg' WHERE model = 'Toyota Camry';
+      UPDATE cars SET image_url = '/images/cars/honda-accord.jpg' WHERE model = 'Honda Accord';
+      UPDATE cars SET image_url = '/images/cars/mazda-6.jpg' WHERE model = 'Mazda 6';
+      UPDATE cars SET image_url = '/images/cars/volkswagen-passat.jpg' WHERE model = 'Volkswagen Passat';
+      UPDATE cars SET image_url = '/images/cars/volkswagen-golf.jpg' WHERE model = 'Volkswagen Golf';
+      UPDATE cars SET image_url = '/images/cars/mini-cooper.webp' WHERE model = 'Mini Cooper';
+      UPDATE cars SET image_url = '/images/cars/ford-focus.jpg' WHERE model = 'Ford Focus';
+      UPDATE cars SET image_url = '/images/cars/mazda-3.avif' WHERE model = 'Mazda 3';
+      UPDATE cars SET image_url = '/images/cars/honda-crv.avif' WHERE model = 'Honda CR-V';
+      UPDATE cars SET image_url = '/images/cars/toyota-rav4.avif' WHERE model = 'Toyota RAV4';
+      UPDATE cars SET image_url = '/images/cars/mazda-cx5.jpg' WHERE model = 'Mazda CX-5';
+      UPDATE cars SET image_url = '/images/cars/chevrolet-suburban.avif' WHERE model = 'Chevrolet Suburban';
+      UPDATE cars SET image_url = '/images/cars/bmw-5-series.avif' WHERE model = 'BMW 5 Series';
+      UPDATE cars SET image_url = '/images/cars/mercedes-eclass.avif' WHERE model = 'Mercedes E-Class';
+      UPDATE cars SET image_url = '/images/cars/audi-a6.webp' WHERE model = 'Audi A6';
+      UPDATE cars SET image_url = '/images/cars/tesla-model-3.avif' WHERE model = 'Tesla Model 3';
+      UPDATE cars SET image_url = '/images/cars/bmw-x5.avif' WHERE model = 'BMW X5';
+      UPDATE cars SET image_url = '/images/cars/mercedes-gle.jpg' WHERE model = 'Mercedes GLE';
+      UPDATE cars SET image_url = '/images/cars/porsche-cayenne.avif' WHERE model = 'Porsche Cayenne';
+      UPDATE cars SET image_url = '/images/cars/range-rover-sport.avif' WHERE model = 'Range Rover Sport';
+      UPDATE cars SET image_url = '/images/cars/ford-f-150.jpg' WHERE model = 'Ford F-150';
+      UPDATE cars SET image_url = '/images/cars/toyota-tundra.avif' WHERE model = 'Toyota Tundra';
+      UPDATE cars SET image_url = '/images/cars/chevrolet-silverado.avif' WHERE model = 'Chevrolet Silverado';
+      UPDATE cars SET image_url = '/images/cars/ram-1500.avif' WHERE model = 'RAM 1500';
+      UPDATE cars SET image_url = '/images/cars/porsche-911.webp' WHERE model = 'Porsche 911';
+      UPDATE cars SET image_url = '/images/cars/chevrolet-corvette.avif' WHERE model = 'Chevrolet Corvette';
+      UPDATE cars SET image_url = '/images/cars/ford-mustang-gt.webp' WHERE model = 'Ford Mustang GT';
+      UPDATE cars SET image_url = '/images/cars/bmw-m4.avif' WHERE model = 'BMW M4';
+    `);
+
+    // Assign existing cars to locations using UPDATE (preserves existing data including images)
+    // This maps cars by their ID to specific locations
+    await db.exec(`
+      UPDATE cars SET locationId = 9 WHERE id IN (1, 2, 5, 13, 17, 21);  -- Toronto
+      UPDATE cars SET locationId = 10 WHERE id IN (3, 6, 9, 14, 18);      -- Waterloo
+      UPDATE cars SET locationId = 13 WHERE id IN (4, 7, 10, 15, 19);    -- Montreal
+      UPDATE cars SET locationId = 14 WHERE id IN (11, 12, 16, 20, 22, 25); -- Vancouver
+      UPDATE cars SET locationId = 15 WHERE id IN (8, 23, 26, 27, 29);   -- Hamilton
+      UPDATE cars SET locationId = 16 WHERE id IN (24, 28, 30, 31, 32);  -- London
     `);
 };
 
@@ -443,10 +531,14 @@ app.get('/api/cars', async (req, res) => {
       return res.status(500).json({ error: 'Database not initialized' });
     }
     
-    const { minPrice, maxPrice, type } = req.query;
+    const { minPrice, maxPrice, type, locationId } = req.query;
     let query = 'SELECT * FROM cars WHERE 1=1';
     const params = [];
 
+    if (locationId) {
+      query += ' AND locationId = ?';
+      params.push(parseInt(locationId, 10));
+    }
     if (minPrice) {
       query += ' AND price_per_day >= ?';
       params.push(parseFloat(minPrice));

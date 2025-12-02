@@ -25,13 +25,15 @@ interface Car {
 interface CarListProps {
   baseUrl?: string;
   onFilterChange?: (cars: Car[]) => void;
+  locationId?: number;
 }
 
 // carTypes moved into CarFilter; no local declaration needed here
 
 export default function CarList({
   baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000',
-  onFilterChange
+  onFilterChange,
+  locationId
 }: CarListProps) {
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
@@ -125,6 +127,7 @@ const handleCreateReservation = async (reservationData: Omit<BaseReservation, 's
 
     try {
       const params = new URLSearchParams();
+      if (locationId) params.append('locationId', locationId.toString());
       if (minPrice) params.append('minPrice', minPrice);
       if (maxPrice) params.append('maxPrice', maxPrice);
       if (selectedType !== 'All Types') params.append('type', selectedType);
@@ -147,7 +150,7 @@ const handleCreateReservation = async (reservationData: Omit<BaseReservation, 's
     } finally {
       setLoading(false);
     }
-  }, [baseUrl, minPrice, maxPrice, selectedType, onFilterChange]);
+  }, [baseUrl, locationId, minPrice, maxPrice, selectedType, onFilterChange]);
 
   useEffect(() => {
     fetchCars();

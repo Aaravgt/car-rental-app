@@ -3,16 +3,21 @@ import SearchBar from './components/SearchBar';
 import CarList from './components/CarList';
 import ReservationList from './components/ReservationList';
 import DailyRentalsReport from './components/DailyRentalsReport';
-import LocationsList from './components/LocationsList';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Home from './components/Home';
 import { useAuth } from './AuthContext';
 
+interface Location {
+  id: number;
+  name: string;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'search' | 'reservations' | 'report' | 'locations'>('search');
   const { user, logout } = useAuth();
   const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   // We keep ReservationList and DailyRentalsReport imports for future tabs
 
   return (
@@ -101,12 +106,6 @@ export default function App() {
         >
           Rental Reports
         </button>
-        <button
-          className={`tab-button ${activeTab === 'locations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('locations')}
-        >
-          Locations
-        </button>
         </div>
 
         <div style={{ position: 'absolute', right: 24, top: 24 }}>
@@ -128,13 +127,38 @@ export default function App() {
         {activeTab === 'search' && (
           <>
             <Home />
-            <SearchBar />
-            <CarList />
+            <SearchBar onSelect={(location) => setSelectedLocation(location)} />
+            {selectedLocation && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '1rem',
+                margin: '1rem 0',
+                background: '#e0f2fe',
+                borderRadius: '8px',
+                color: '#0369a1'
+              }}>
+                Showing cars available at: <strong>{selectedLocation.name}</strong>
+                <button 
+                  onClick={() => setSelectedLocation(null)}
+                  style={{
+                    marginLeft: '1rem',
+                    padding: '0.25rem 0.75rem',
+                    background: '#0369a1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            <CarList locationId={selectedLocation?.id} />
           </>
         )}
         {activeTab === 'reservations' && user && <ReservationList />}
         {activeTab === 'report' && user && <DailyRentalsReport />}
-        {activeTab === 'locations' && <LocationsList />}
         {(activeTab === 'reservations' || activeTab === 'report') && !user && (
           <div style={{ 
             textAlign: 'center', 
