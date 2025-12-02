@@ -179,7 +179,7 @@ export default function SearchBar({
         value={query}
         onChange={e => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Type a city or airport"
+        placeholder="Enter a city"
         style={{
           width: '100%',
           padding: '8px 12px',

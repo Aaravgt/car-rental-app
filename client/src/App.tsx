@@ -100,12 +100,14 @@ export default function App() {
         >
           My Reservations
         </button>
-        <button
-          className={`tab-button ${activeTab === 'report' ? 'active' : ''}`}
-          onClick={() => setActiveTab('report')}
-        >
-          Rental Reports
-        </button>
+        {user?.role === 'admin' && (
+          <button
+            className={`tab-button ${activeTab === 'report' ? 'active' : ''}`}
+            onClick={() => setActiveTab('report')}
+          >
+            Rental Reports
+          </button>
+        )}
         </div>
 
         <div style={{ position: 'absolute', right: 24, top: 24 }}>
@@ -185,8 +187,28 @@ export default function App() {
           </>
         )}
         {activeTab === 'reservations' && user && <ReservationList />}
-        {activeTab === 'report' && user && <DailyRentalsReport />}
-        {(activeTab === 'reservations' || activeTab === 'report') && !user && (
+        {activeTab === 'report' && user?.role === 'admin' && <DailyRentalsReport />}
+        {activeTab === 'report' && (!user || user.role !== 'admin') && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '2rem',
+            background: 'white',
+            borderRadius: '12px',
+            marginTop: '2rem'
+          }}>
+            <h3 style={{ color: '#4B5563', marginBottom: '1rem' }}>Admin access required for rental reports</h3>
+            {!user && (
+              <button 
+                onClick={() => setAuthMode('login')}
+                className="button-primary"
+                style={{ padding: '0.75rem 2rem' }}
+              >
+                Sign in as admin
+              </button>
+            )}
+          </div>
+        )}
+        {(activeTab === 'reservations') && !user && (
           <div style={{ 
             textAlign: 'center', 
             padding: '2rem',

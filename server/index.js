@@ -56,7 +56,8 @@ const setupDb = async () => {
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        role TEXT DEFAULT 'user'
       );
 
       CREATE TABLE IF NOT EXISTS reservations (
@@ -111,9 +112,9 @@ const setupDb = async () => {
         (11, 'Brampton, ON'),
         (12, 'Greater Toronto Area (GTA), ON');
 			
-      INSERT OR IGNORE INTO users (id, username, password) VALUES
-        (1, 'aarav', 'shah'),
-        (2, 'demo', 'password');
+      INSERT OR IGNORE INTO users (id, username, password, role) VALUES
+        (1, 'aarav', 'shah', 'admin'),
+        (2, 'demo', 'password', 'user');
 			
       INSERT OR IGNORE INTO cars (id, model, type, price_per_day, available) VALUES
         -- Economy Cars
@@ -164,6 +165,19 @@ const setupDb = async () => {
         (31, 'Ford Mustang GT', 'Sports', 150.00, 1),
         (32, 'BMW M4', 'Sports', 225.00, 1);
     `);
+
+    // Migration: Add role column if it doesn't exist
+    try {
+      await db.exec(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`);
+      console.log('Added role column to users table');
+      // Update existing users: set aarav as admin
+      await db.exec(`UPDATE users SET role = 'admin' WHERE username = 'aarav'`);
+      console.log('Set aarav as admin');
+    } catch (err) {
+      if (err.message && !err.message.includes('duplicate column name')) {
+        console.log('Migration note (role):', err.message);
+      }
+    }
 
     // Migration: Add locationId column if it doesn't exist (for existing databases)
     try {
@@ -593,7 +607,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    const user = await db.get('SELECT id, username FROM users WHERE username = ? AND password = ?', [username, password]);
+    const user = await db.get('SELECT id, username, role FROM users WHERE username = ? AND password = ?', [username, password]);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -624,8 +638,8 @@ app.post('/api/signup', async (req, res) => {
       return res.status(409).json({ error: 'User already exists' });
     }
 
-    const result = await db.run('INSERT INTO users (username, password) VALUES (?, ?)', [normalizedUsername, password]);
-    const user = { id: result.lastID, username: normalizedUsername };
+    const result = await db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [normalizedUsername, password, 'user']);
+    const user = { id: result.lastID, username: normalizedUsername, role: 'user' };
     const token = Buffer.from(`${user.id}:${Date.now()}:${Math.random()}`).toString('base64');
     return res.status(201).json({ token, user });
   } catch (err) {
