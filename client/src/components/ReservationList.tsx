@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ReservationForm from './ReservationForm';
 
 interface BaseReservation {
@@ -116,6 +116,80 @@ const handleCancelReservation = async (id: number) => {
     throw err;
   }
 };
+
+  // Helper: normalize 'today' to start of day for comparisons
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const activeReservations = useMemo(() =>
+    reservations.filter(r => r.status !== 'cancelled' && new Date(r.endDate) >= todayStart),
+    [reservations, todayStart]
+  );
+
+  const pastReservations = useMemo(() =>
+    reservations.filter(r => r.status !== 'cancelled' && new Date(r.endDate) < todayStart),
+    [reservations, todayStart]
+  );
+
+  const cancelledReservations = useMemo(() =>
+    reservations.filter(r => r.status === 'cancelled'),
+    [reservations]
+  );
+
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+      <section style={{ marginTop: 18 }}>
+        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 8 }}>{title}</h3>
+        {children}
+      </section>
+    );
+  }
+
+  function renderReservationCard(reservation: Reservation) {
+    const car = cars[reservation.carId];
+    return (
+      <div key={reservation.id} className="reservation-card">
+        <div className="reservation-header">
+          <h3 className="car-model">{car?.model || 'Unknown Car'}</h3>
+          <span className={`status-badge status-${reservation.status}`}>
+            {reservation.status}
+          </span>
+        </div>
+
+        <div className="reservation-dates">
+          <div>From: {new Date(reservation.startDate).toLocaleDateString()}</div>
+          <div>To: {new Date(reservation.endDate).toLocaleDateString()}</div>
+        </div>
+        <div style={{ marginTop: 8, color: '#4b5563', fontSize: '0.875rem' }}>
+          Add-ons: {reservation.gps ? 'GPS' : ''}{reservation.gps && reservation.tollPass ? ', ' : ''}{reservation.tollPass ? 'Toll Pass' : (reservation.gps ? '' : 'None')}
+        </div>
+
+        <div className="reservation-price">
+          Total: ${reservation.totalPrice.toFixed(2)}
+        </div>
+
+        {reservation.status === 'confirmed' && (
+          <div className="action-buttons">
+            <button
+              className="edit-button"
+              onClick={() => setEditingReservation(reservation)}
+            >
+              Edit
+            </button>
+            <button
+              className="cancel-button"
+              onClick={() => handleCancelReservation(reservation.id)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
 
   return (
@@ -256,55 +330,32 @@ const handleCancelReservation = async (id: number) => {
           Loading reservations...
         </div>
       ) : (
-        <div className="reservations-grid">
-          {reservations.map(reservation => {
-            const car = cars[reservation.carId];
-            return (
-              <div key={reservation.id} className="reservation-card">
-                <div className="reservation-header">
-                  <h3 className="car-model">{car?.model || 'Unknown Car'}</h3>
-                  <span className={`status-badge status-${reservation.status}`}>
-                    {reservation.status}
-                  </span>
-                </div>
+        <div>
+          {/* Group reservations into Active, Past and Cancelled */}
+          <Section title="Active Reservations">
+            {/** Active: not cancelled and endDate >= today */}
+            <div className="reservations-grid">
+              {activeReservations.length > 0 ? activeReservations.map(r => renderReservationCard(r)) : (
+                <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6b7280' }}>No active reservations.</p>
+              )}
+            </div>
+          </Section>
 
-                <div className="reservation-dates">
-                  <div>From: {new Date(reservation.startDate).toLocaleDateString()}</div>
-                  <div>To: {new Date(reservation.endDate).toLocaleDateString()}</div>
-                </div>
-                <div style={{ marginTop: 8, color: '#4b5563', fontSize: '0.875rem' }}>
-                  Add-ons: {reservation.gps ? 'GPS' : ''}{reservation.gps && reservation.tollPass ? ', ' : ''}{reservation.tollPass ? 'Toll Pass' : (reservation.gps ? '' : 'None')}
-                </div>
+          <Section title="Past Reservations">
+            <div className="reservations-grid">
+              {pastReservations.length > 0 ? pastReservations.map(r => renderReservationCard(r)) : (
+                <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6b7280' }}>No past reservations.</p>
+              )}
+            </div>
+          </Section>
 
-                <div className="reservation-price">
-                  Total: ${reservation.totalPrice.toFixed(2)}
-                </div>
-
-                {reservation.status === 'confirmed' && (
-                  <div className="action-buttons">
-                    <button
-                      className="edit-button"
-                      onClick={() => setEditingReservation(reservation)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="cancel-button"
-                      onClick={() => handleCancelReservation(reservation.id)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {reservations.length === 0 && (
-            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6b7280' }}>
-              No reservations found.
-            </p>
-          )}
+          <Section title="Cancelled Reservations">
+            <div className="reservations-grid">
+              {cancelledReservations.length > 0 ? cancelledReservations.map(r => renderReservationCard(r)) : (
+                <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6b7280' }}>No cancelled reservations.</p>
+              )}
+            </div>
+          </Section>
         </div>
       )}
 
