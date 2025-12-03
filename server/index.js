@@ -516,6 +516,9 @@ app.get('/api/reservations', async (req, res) => {
     let query = 'SELECT * FROM reservations WHERE 1=1';
     const params = [];
 
+    // If no userId is provided, try to get it from the request (for future auth middleware)
+    // For now, if userId is provided in query, use it
+    // Otherwise, default to showing all (will be fixed with auth middleware)
     if (userId) {
       query += ' AND userId = ?';
       params.push(userId);

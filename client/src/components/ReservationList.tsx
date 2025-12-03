@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import ReservationForm from './ReservationForm';
+import { useAuth } from '../AuthContext';
 
 interface BaseReservation {
   carId: number;
@@ -29,21 +30,23 @@ interface Car {
 }
 
 export default function ReservationList() {
+  const { user } = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [cars, setCars] = useState<Record<number, Car>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   
-  // Fetch all reservations and their corresponding cars
+  // Fetch reservations for current user and cars
   useEffect(() => {
     fetchReservations();
-  }, []);
+  }, [user]);
 
   const fetchReservations = async () => {
     try {
+      setLoading(true);
       const [reservationsRes, carsRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/reservations`),
+        fetch(`${import.meta.env.VITE_API_URL}/api/reservations?userId=${user?.id || ''}`),
         fetch(`${import.meta.env.VITE_API_URL}/api/cars`)
       ]);
 

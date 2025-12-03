@@ -173,7 +173,7 @@ export default function DailyRentalsReport() {
       `}</style>
 
       <div className="report-header">
-        <h2 className="text-2xl font-bold mb-4">Daily Rentals Report</h2>
+        <h2 className="text-2xl font-bold mb-4">Rental Report</h2>
 
         <div className="date-filters">
           <div className="filter-group">

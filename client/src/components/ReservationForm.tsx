@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../AuthContext';
 
 interface Reservation {
   id: number;
@@ -52,6 +53,7 @@ export default function ReservationForm({
   onCancel,
   onClose
 }: ReservationFormProps) {
+  const { user } = useAuth();
   const [startDate, setStartDate] = useState(reservation?.startDate || '');
   const [endDate, setEndDate] = useState(reservation?.endDate || '');
   const [car, setCar] = useState<Car | null>(null);
@@ -151,18 +153,16 @@ export default function ReservationForm({
         startDate,
         endDate,
         totalPrice,
-        userId: 1, // placeholder user
+        userId: user?.id || 1, // use logged-in user's ID
         gps,
         tollPass: tollPass
       };
       await onSubmit(reservationPayload);
       setError(null);
 
-      // After reservation creation, call payment endpoint (we assume reservation saved and car availability updated)
-      // We need reservation ID but the parent onSubmit does not currently return it.
-      // For demo: fetch the latest reservation for user 1 matching car and dates.
+      // After reservation creation, call payment endpoint
       try {
-        const q = new URLSearchParams({ userId: '1' }).toString();
+        const q = new URLSearchParams({ userId: String(user?.id || 1) }).toString();
         const resList = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/reservations?${q}`);
         const reservations = await resList.json();
         // naive match
