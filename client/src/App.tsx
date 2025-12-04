@@ -3,6 +3,7 @@ import SearchBar from './components/SearchBar';
 import CarList from './components/CarList';
 import ReservationList from './components/ReservationList';
 import DailyRentalsReport from './components/DailyRentalsReport';
+import UserRentalReport from './components/UserRentalReport';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Home from './components/Home';
@@ -14,7 +15,7 @@ interface Location {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'search' | 'reservations' | 'report' | 'locations'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'reservations' | 'report' | 'admin-report' | 'locations'>('search');
   const { user, logout } = useAuth();
   const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -102,10 +103,18 @@ export default function App() {
         </button>
         {user?.role === 'admin' && (
           <button
+            className={`tab-button ${activeTab === 'admin-report' ? 'active' : ''}`}
+            onClick={() => setActiveTab('admin-report')}
+          >
+            Rental Reports
+          </button>
+        )}
+        {user && user.role !== 'admin' && (
+          <button
             className={`tab-button ${activeTab === 'report' ? 'active' : ''}`}
             onClick={() => setActiveTab('report')}
           >
-            Rental Reports
+            My Activity
           </button>
         )}
         </div>
@@ -187,8 +196,8 @@ export default function App() {
           </>
         )}
         {activeTab === 'reservations' && user && <ReservationList />}
-        {activeTab === 'report' && user?.role === 'admin' && <DailyRentalsReport />}
-        {activeTab === 'report' && (!user || user.role !== 'admin') && (
+        {activeTab === 'admin-report' && user?.role === 'admin' && <DailyRentalsReport />}
+        {activeTab === 'admin-report' && (!user || user.role !== 'admin') && (
           <div style={{ 
             textAlign: 'center', 
             padding: '2rem',
@@ -208,6 +217,7 @@ export default function App() {
             )}
           </div>
         )}
+        {activeTab === 'report' && user && user.role !== 'admin' && <UserRentalReport />}
         {(activeTab === 'reservations') && !user && (
           <div style={{ 
             textAlign: 'center', 

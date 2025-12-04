@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import ReservationForm from './ReservationForm';
 import { useAuth } from '../AuthContext';
 
 interface BaseReservation {
@@ -19,8 +18,6 @@ interface Reservation extends BaseReservation {
   updatedAt: string;
 }
 
-type NewReservation = Omit<BaseReservation, 'status'>;
-
 interface Car {
   id: number;
   model: string;
@@ -35,7 +32,6 @@ export default function ReservationList() {
   const [cars, setCars] = useState<Record<number, Car>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   
   // Fetch reservations for current user and cars
   useEffect(() => {
@@ -72,53 +68,27 @@ export default function ReservationList() {
     }
   };
 
-  const handleUpdateReservation = async (updatedReservation: NewReservation) => {
-    if (!editingReservation) return;
-
+  const handleCancelReservation = async (id: number) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/reservations/${editingReservation.id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...updatedReservation, status: 'confirmed' })
+        `${import.meta.env.VITE_API_URL}/api/reservations/${id}`,
+        { 
+          method: 'DELETE'
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update reservation');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to cancel reservation');
       }
 
       await fetchReservations();
-      setEditingReservation(null);
       setError(null); // Clear any previous errors on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update reservation');
+      setError(err instanceof Error ? err.message : 'Failed to cancel reservation');
       throw err;
     }
   };
-
-const handleCancelReservation = async (id: number) => {
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/reservations/${id}`,
-      { 
-        method: 'DELETE'
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to cancel reservation');
-    }
-
-    await fetchReservations();
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to cancel reservation');
-    throw err;
-  }
-};
 
   // Helper: normalize 'today' to start of day for comparisons
   const todayStart = useMemo(() => {
@@ -176,12 +146,6 @@ const handleCancelReservation = async (id: number) => {
 
         {reservation.status === 'confirmed' && (
           <div className="action-buttons">
-            <button
-              className="edit-button"
-              onClick={() => setEditingReservation(reservation)}
-            >
-              Edit
-            </button>
             <button
               className="cancel-button"
               onClick={() => handleCancelReservation(reservation.id)}
@@ -275,7 +239,6 @@ const handleCancelReservation = async (id: number) => {
           margin-top: 1rem;
         }
 
-        .edit-button,
         .cancel-button {
           padding: 0.5rem 1rem;
           border-radius: 6px;
@@ -283,19 +246,6 @@ const handleCancelReservation = async (id: number) => {
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
-        }
-
-        .edit-button {
-          background-color: #3b82f6;
-          color: white;
-          border: none;
-        }
-
-        .edit-button:hover {
-          background-color: #2563eb;
-        }
-
-        .cancel-button {
           background-color: #ef4444;
           color: white;
           border: none;
@@ -362,14 +312,6 @@ const handleCancelReservation = async (id: number) => {
         </div>
       )}
 
-      {editingReservation && (
-        <ReservationForm
-          reservation={editingReservation}
-          onSubmit={handleUpdateReservation}
-          onCancel={handleCancelReservation}
-          onClose={() => setEditingReservation(null)}
-        />
-      )}
     </div>
   );
 }

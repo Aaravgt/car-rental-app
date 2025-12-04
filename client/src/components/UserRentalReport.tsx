@@ -1,75 +1,106 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../AuthContext';
 
-interface RentalReport {
+interface UserRentalStats {
   date: string;
-  total_rentals: number;
-  total_revenue: number;
-  car_types: string;
-  average_price: number;
-  cancellations: number;
+  rentals: number;
+  total_spent: number;
+  cars_rented: string;
 }
 
-export default function DailyRentalsReport() {
+export default function UserRentalReport() {
+  const { user } = useAuth();
   const [startDate, setStartDate] = useState(
     new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [report, setReport] = useState<RentalReport[]>([]);
+  const [stats, setStats] = useState<UserRentalStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReport();
-  }, [startDate, endDate]);
+    fetchUserStats();
+  }, [startDate, endDate, user]);
 
-  const fetchReport = async () => {
+  const fetchUserStats = async () => {
+    if (!user?.id) return;
+
     try {
       setLoading(true);
       setError(null);
 
+      // Fetch user's reservations
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/reports/daily-rentals?startDate=${startDate}&endDate=${endDate}`
+        `${import.meta.env.VITE_API_URL}/api/reservations?userId=${user.id}`
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch report');
+        throw new Error('Failed to fetch reservations');
       }
 
-      const data = await response.json();
-      setReport(data);
+      const reservations = await response.json();
+
+      // Filter reservations by date range and status (only confirmed)
+      const filtered = reservations.filter((r: any) => {
+        const startReservation = new Date(r.startDate);
+        return r.status === 'confirmed' && startReservation >= new Date(startDate) && startReservation <= new Date(endDate);
+      });
+
+      // Fetch cars to get car models
+      const carsRes = await fetch(`${import.meta.env.VITE_API_URL}/api/cars`);
+      const cars = await carsRes.json();
+      const carMap = new Map(cars.map((c: any) => [c.id, c.model]));
+
+      // Group by date and calculate stats
+      const dailyStats: Record<string, UserRentalStats> = {};
+
+      filtered.forEach((reservation: any) => {
+        const date = reservation.startDate.split('T')[0];
+        if (!dailyStats[date]) {
+          dailyStats[date] = {
+            date,
+            rentals: 0,
+            total_spent: 0,
+            cars_rented: ''
+          };
+        }
+
+        dailyStats[date].rentals += 1;
+        dailyStats[date].total_spent += reservation.totalPrice;
+        const carModel = carMap.get(reservation.carId) || 'Unknown';
+        if (!dailyStats[date].cars_rented.includes(carModel as string)) {
+          dailyStats[date].cars_rented += (dailyStats[date].cars_rented ? ', ' : '') + carModel;
+        }
+      });
+
+      setStats(Object.values(dailyStats).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (err) {
-      setError('Failed to load report data');
+      setError('Failed to load your rental stats');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   const calculateTotals = () => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const daysDifference = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end dates
-    
-    const totals = report.reduce(
+    return stats.reduce(
       (acc, day) => ({
-        ...acc,
-        rentals: acc.rentals + day.total_rentals,
-        revenue: acc.revenue + day.total_revenue,
-        cancellations: acc.cancellations + day.cancellations,
+        rentals: acc.rentals + day.rentals,
+        spent: acc.spent + day.total_spent,
       }),
-      { rentals: 0, revenue: 0, cancellations: 0, daysDifference }
+      { rentals: 0, spent: 0 }
     );
-    
-    return totals;
   };
 
   const totals = calculateTotals();
+  const averageDailySpend = stats.length > 0 ? totals.spent / stats.length : 0;
 
   return (
-    <div className="daily-rentals-report">
+    <div className="user-rental-report">
       <style>{`
-        .daily-rentals-report {
+        .user-rental-report {
           max-width: 1200px;
           margin: 2rem auto;
           padding: 0 1rem;
@@ -177,14 +208,23 @@ export default function DailyRentalsReport() {
           color: #6b7280;
           padding: 3rem;
         }
+
+        .empty-message {
+          text-align: center;
+          color: #6b7280;
+          padding: 2rem;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
       `}</style>
 
       <div className="report-header">
-        <h2 className="text-2xl font-bold mb-4">Rental Report</h2>
+        <h2 className="text-2xl font-bold mb-4">My Rental Activity</h2>
 
         <div className="date-filters">
           <div className="filter-group">
-            <label htmlFor="start-date" className="filter-label"> 
+            <label htmlFor="start-date" className="filter-label">
               Start Date
             </label>
             <input
@@ -208,7 +248,6 @@ export default function DailyRentalsReport() {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               min={startDate}
-              //max={new Date().toISOString().split('T')[0]}
             />
           </div>
         </div>
@@ -220,20 +259,18 @@ export default function DailyRentalsReport() {
           </div>
 
           <div className="summary-card">
-            <div className="summary-label">Total Revenue</div>
-            <div className="summary-value">${totals.revenue.toFixed(2)}</div>
+            <div className="summary-label">Total Spent</div>
+            <div className="summary-value">${totals.spent.toFixed(2)}</div>
           </div>
 
           <div className="summary-card">
-            <div className="summary-label">Total Cancellations</div>
-            <div className="summary-value">{totals.cancellations}</div>
+            <div className="summary-label">Average Daily Spend</div>
+            <div className="summary-value">${averageDailySpend.toFixed(2)}</div>
           </div>
 
           <div className="summary-card">
-            <div className="summary-label">Average Daily Revenue</div>
-            <div className="summary-value">
-              ${(totals.revenue / totals.daysDifference).toFixed(2)}
-            </div>
+            <div className="summary-label">Days with Rentals</div>
+            <div className="summary-value">{stats.length}</div>
           </div>
         </div>
       </div>
@@ -246,39 +283,31 @@ export default function DailyRentalsReport() {
 
       {loading ? (
         <div className="loading-message" role="status">
-          Loading report data...
+          Loading your rental activity...
+        </div>
+      ) : stats.length === 0 ? (
+        <div className="empty-message">
+          No rental activity for the selected date range.
         </div>
       ) : (
         <table className="report-table">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Total Rentals</th>
-              <th>Revenue</th>
-              <th>Average Price</th>
-              <th>Cancellations</th>
-              <th>Car Types</th>
+              <th>Rentals</th>
+              <th>Amount Spent</th>
+              <th>Cars Rented</th>
             </tr>
           </thead>
           <tbody>
-            {report.map((day) => (
+            {stats.map((day) => (
               <tr key={day.date}>
                 <td>{new Date(day.date).toLocaleDateString()}</td>
-                <td>{day.total_rentals}</td>
-                <td>${day.total_revenue.toFixed(2)}</td>
-                <td>${day.average_price.toFixed(2)}</td>
-                <td>{day.cancellations}</td>
-                <td>{day.car_types ? day.car_types.split(',').join(', ') : 'None'}</td>
-
+                <td>{day.rentals}</td>
+                <td>${day.total_spent.toFixed(2)}</td>
+                <td>{day.cars_rented || 'None'}</td>
               </tr>
             ))}
-            {report.length === 0 && (
-              <tr>
-                <td colSpan={6} style={{ textAlign: 'center', color: '#6b7280' }}>
-                  No data available for the selected date range.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       )}

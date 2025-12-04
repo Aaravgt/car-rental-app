@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const raw = localStorage.getItem('auth_user');
+      const raw = sessionStorage.getItem('auth_user');
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -27,17 +27,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('auth_token');
+    return sessionStorage.getItem('auth_token');
   });
 
   useEffect(() => {
-    if (user) localStorage.setItem('auth_user', JSON.stringify(user));
-    else localStorage.removeItem('auth_user');
+    if (user) sessionStorage.setItem('auth_user', JSON.stringify(user));
+    else sessionStorage.removeItem('auth_user');
   }, [user]);
 
   useEffect(() => {
-    if (token) localStorage.setItem('auth_token', token);
-    else localStorage.removeItem('auth_token');
+    if (token) sessionStorage.setItem('auth_token', token);
+    else sessionStorage.removeItem('auth_token');
   }, [token]);
 
   const login = async (username: string, password: string) => {
